@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Sistema visual · Herramienta Monica
+   Superficies frias y neutras, un solo acento calido (el amarillo Frisby) y
+   semaforo sobrio para los estados de validacion.
+   --------------------------------------------------------------------------- */
+
+:root {
+  --fondo:            #f6f7f9;
+  --superficie:       #ffffff;
+  --superficie-alt:   #f0f2f5;
+  --borde:            #e0e4ea;
+  --borde-fuerte:     #c8cfd9;
+
+  --texto:            #16191f;
+  --texto-suave:      #5b6472;
+  --texto-tenue:      #8b95a4;
+
+  --acento:           #f5a623;   /* amarillo Frisby */
+  --acento-oscuro:    #c47f0d;
+
+  --ok:               #0f8a5f;
+  --ok-fondo:         #e6f4ee;
+  --alerta:           #b7791f;
+  --alerta-fondo:     #fdf4e3;
+  --error:            #c0362c;
+  --error-fondo:      #fbeceb;
+  --info:             #2563a8;
+  --info-fondo:       #e8f0f9;
+
+  --radio:            8px;
+  --sombra:           0 1px 2px rgb(16 25 40 / 0.04), 0 4px 12px rgb(16 25 40 / 0.05);
+}
+
+@theme inline {
+  --color-fondo:          var(--fondo);
+  --color-superficie:     var(--superficie);
+  --color-superficie-alt: var(--superficie-alt);
+  --color-borde:          var(--borde);
+  --color-borde-fuerte:   var(--borde-fuerte);
+  --color-texto:          var(--texto);
+  --color-texto-suave:    var(--texto-suave);
+  --color-texto-tenue:    var(--texto-tenue);
+  --color-acento:         var(--acento);
+  --color-acento-oscuro:  var(--acento-oscuro);
+  --color-ok:             var(--ok);
+  --color-ok-fondo:       var(--ok-fondo);
+  --color-alerta:         var(--alerta);
+  --color-alerta-fondo:   var(--alerta-fondo);
+  --color-error:          var(--error);
+  --color-error-fondo:    var(--error-fondo);
+  --color-info:           var(--info);
+  --color-info-fondo:     var(--info-fondo);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-jet), ui-monospace, monospace;
+}
+
+* {
+  border-color: var(--borde);
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cifras de horas: siempre tabulares, para que las columnas se alineen */
+.cifra {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* La grilla del cronograma scrollea sola, el body nunca en horizontal */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}

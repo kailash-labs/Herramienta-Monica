@@ -1,0 +1,13 @@
+.env
+.env.local
+.env*.local
+.DS_Store
+node_modules/
+.next/
+dist/
+next-env.d.ts
+
+# Supabase local
+supabase/.branches
+supabase/.temp
+supabase/.env

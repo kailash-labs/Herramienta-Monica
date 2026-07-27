@@ -1,0 +1,245 @@
+/* ---------------------------------------------------------------------------
+   Hoja imprimible del cronograma.
+   Horizontal, una semana por pagina. En pantalla se ve igual que impresa para
+   que no haya sorpresas al guardar el PDF.
+   --------------------------------------------------------------------------- */
+
+.hoja {
+  background: #e8eaee;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1120px;
+  margin: 0 auto 12px;
+}
+
+.volver {
+  font-size: 13px;
+  color: #2563a8;
+  text-decoration: none;
+}
+.volver:hover { text-decoration: underline; }
+
+.acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ayuda { font-size: 11px; color: #5b6472; }
+
+.boton {
+  background: #16191f;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.boton:hover { background: #000; }
+
+/* --- el documento ------------------------------------------------------- */
+
+.documento {
+  background: #fff;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 22px 24px;
+  box-shadow: 0 2px 12px rgb(16 25 40 / 0.12);
+}
+
+.encabezado {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #16191f;
+}
+
+.encabezado h1 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.sub {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #5b6472;
+}
+
+.sello {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.estado {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.estado-publicada { background: #e6f4ee; color: #0f8a5f; }
+.estado-borrador  { background: #f0f2f5; color: #5b6472; }
+.estado-cerrada   { background: #e8f0f9; color: #2563a8; }
+
+.fecha-sello { font-size: 10px; color: #8b95a4; }
+
+/* --- la grilla ---------------------------------------------------------- */
+
+.grilla {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 10px;
+}
+
+.grilla thead th {
+  background: #f0f2f5;
+  border-bottom: 1px solid #c8cfd9;
+  padding: 5px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #5b6472;
+  text-align: center;
+}
+
+.dia-num {
+  display: block;
+  font-weight: 400;
+  color: #8b95a4;
+}
+
+.col-nombre {
+  text-align: left !important;
+  padding-left: 8px !important;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.col-horas {
+  text-align: right !important;
+  padding-right: 8px !important;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.col-horas.con-extra { color: #c0362c; }
+.extra { font-size: 9px; margin-left: 3px; }
+
+.fila-cargo td {
+  background: #f6f7f9;
+  border-top: 1px solid #c8cfd9;
+  border-bottom: 1px solid #e0e4ea;
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5b6472;
+}
+
+.punto {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.grilla tbody td {
+  border-bottom: 1px solid #eef0f3;
+  padding: 3px 2px;
+}
+
+.celda {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.celda.turno {
+  color: #fff;
+  border-radius: 3px;
+  padding: 3px 2px;
+  line-height: 1.25;
+}
+
+.rango { display: block; white-space: nowrap; font-weight: 500; }
+
+.celda.vacia { color: #c8cfd9; }
+
+.celda.ausencia {
+  background: #fdf4e3;
+  color: #b7791f;
+  border: 1px dashed #d9a441;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* --- pie ---------------------------------------------------------------- */
+
+.pie {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e4ea;
+  font-size: 10px;
+  color: #5b6472;
+}
+
+.totales { display: flex; gap: 16px; }
+.totales strong { color: #16191f; font-variant-numeric: tabular-nums; }
+.totales .alerta strong { color: #c0362c; }
+.firma { margin-left: auto; color: #8b95a4; }
+
+/* --- impresion ---------------------------------------------------------- */
+
+@page {
+  size: landscape;
+  margin: 10mm;
+}
+
+@media print {
+  .hoja { background: #fff; padding: 0; }
+  .barra { display: none; }
+
+  .documento {
+    max-width: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /* Sin esto Chrome descarta los fondos de color y los turnos salen en blanco */
+  .celda.turno,
+  .celda.ausencia,
+  .fila-cargo td,
+  .grilla thead th,
+  .estado {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Que un cargo no se parta entre dos paginas si se puede evitar */
+  .fila-cargo { break-after: avoid; }
+  .grilla tr  { break-inside: avoid; }
+  .grilla thead { display: table-header-group; }
+}
