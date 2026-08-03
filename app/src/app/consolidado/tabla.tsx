@@ -147,6 +147,7 @@ export default function TablaConsolidado({
         />
         <Metrica etiqueta="Tiendas" valor={String(tiendas.length)} />
         <Metrica
+          ancla="consolidado-alerta"
           etiqueta="Borradores sin enviar"
           valor={String(borradores.length)}
           tono={borradores.length > 0 ? 'alerta' : 'neutro'}
@@ -166,11 +167,12 @@ export default function TablaConsolidado({
             {nombreMes(mesSiguiente.mes)} →
           </Link>
           <button
+            data-guia="consolidado-comparar"
             onClick={correr}
             disabled={pendiente}
             className="rounded-md bg-[var(--texto)] px-3 py-2 text-sm font-medium text-white transition hover:bg-black disabled:opacity-50"
           >
-            {pendiente ? 'Cruzando…' : 'Cruzar el mes'}
+            {pendiente ? 'Comparando…' : 'Comparar el mes'}
           </button>
         </div>
       </div>
@@ -188,7 +190,7 @@ export default function TablaConsolidado({
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm text-[var(--texto-suave)]">
             Cargá el reporte de nómina del mes en la sección Nómina y después
-            tocá &laquo;Cruzar el mes&raquo;. Acá van a aparecer solo los casos que
+            tocá &laquo;Comparar el mes&raquo;. Acá van a aparecer solo los casos que
             no cuadran.
           </p>
         </div>
@@ -209,7 +211,10 @@ export default function TablaConsolidado({
             </span>
           </div>
 
-          <div className="mt-2.5 overflow-hidden rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
+          <div
+            data-guia="consolidado-tabla"
+            className="mt-2.5 overflow-hidden rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]"
+          >
             <div className="scroll-x">
               <table className="w-full min-w-[900px] border-collapse text-sm">
                 <thead>
@@ -234,7 +239,7 @@ export default function TablaConsolidado({
                           {tienda?.codigo ?? '—'}
                         </td>
                         <td className="px-4 py-2 text-[13px] font-medium">
-                          {colab?.codigo_empleado ?? colab?.nombre_completo ?? '—'}
+                          {colab?.nombre_completo ?? '—'}
                         </td>
                         <td className="cifra px-3 py-2 text-right">
                           {Number(d.horas_extra_planeadas).toFixed(1)}
@@ -400,11 +405,14 @@ function Metrica({
   valor,
   sufijo,
   tono = 'neutro',
+  ancla,
 }: {
   etiqueta: string
   valor: string
   sufijo?: string
   tono?: 'neutro' | 'ok' | 'alerta' | 'error'
+  /** Nombre del anclaje del recorrido guiado, si esta métrica tiene un paso */
+  ancla?: string
 }) {
   const color = {
     neutro: 'text-[var(--texto)]',
@@ -414,7 +422,10 @@ function Metrica({
   }[tono]
 
   return (
-    <div className="rounded-[var(--radio)] border bg-[var(--superficie)] px-4 py-2.5">
+    <div
+      data-guia={ancla}
+      className="rounded-[var(--radio)] border bg-[var(--superficie)] px-4 py-2.5"
+    >
       <div className="text-[11px] text-[var(--texto-suave)]">{etiqueta}</div>
       <div className={`cifra mt-0.5 text-lg font-semibold ${color}`}>
         {valor}

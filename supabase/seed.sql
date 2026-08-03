@@ -218,3 +218,30 @@ from plan p
 join public.colaboradores c on c.codigo_empleado = p.label
 cross join semana s
 on conflict (colaborador_id, fecha, orden_bloque) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Un colaborador de medio tiempo, para poder mostrar la validación de 21 h.
+-- Arranca en 21 h exactas (3 días de 7 h): agregarle un cuarto día hace saltar
+-- la alerta de tope, que es el requisito que Mónica pidió explícitamente.
+-- ---------------------------------------------------------------------------
+
+with tienda as (select id from public.tiendas where codigo = 'Q40')
+insert into public.colaboradores
+  (tienda_id, cargo_id, codigo_empleado, nombre_completo, tipo_jornada)
+select t.id, cg.id, 'MT-01', 'Colaborador MT-01 (medio tiempo)', 'medio_tiempo'
+from tienda t
+join public.cargos cg on cg.codigo = 'DESPACHO_COMBOS'
+on conflict (codigo_empleado) where codigo_empleado is not null do nothing;
+
+with semana as (
+  select s.id, s.fecha_inicio
+  from public.semanas s
+  join public.tiendas t on t.id = s.tienda_id
+  where t.codigo = 'Q40' and s.fecha_inicio = date '2025-11-03'
+)
+insert into public.turnos (semana_id, colaborador_id, fecha, orden_bloque, hora_inicio, hora_fin, tipo_turno)
+select s.id, c.id, s.fecha_inicio + d, 1, '11:00'::time, '18:00'::time, 'completo'
+from semana s
+join public.colaboradores c on c.codigo_empleado = 'MT-01'
+cross join (values (1), (3), (5)) as dias(d)
+on conflict (colaborador_id, fecha, orden_bloque) do nothing;

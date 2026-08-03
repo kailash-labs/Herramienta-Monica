@@ -13,8 +13,8 @@ const ETIQUETA_ORIGEN = {
 } as const
 
 const ETIQUETA_ESTADO = {
-  sin_procesar: { texto: 'Sin pasar a la plantilla', clase: 'bg-[var(--alerta-fondo)] text-[var(--alerta)]' },
-  transcrito: { texto: 'Ya está en la plantilla', clase: 'bg-[var(--ok-fondo)] text-[var(--ok)]' },
+  sin_procesar: { texto: 'Sin pasar al aforo', clase: 'bg-[var(--alerta-fondo)] text-[var(--alerta)]' },
+  transcrito: { texto: 'Ya está en el aforo', clase: 'bg-[var(--ok-fondo)] text-[var(--ok)]' },
   descartado: { texto: 'Descartado', clase: 'bg-[var(--superficie-alt)] text-[var(--texto-tenue)]' },
 } as const
 
@@ -24,7 +24,10 @@ export default function PanelAdjuntos({
   semanaId,
   semana,
   cerrada,
+  ancla,
 }: {
+  /** Nombre del anclaje del recorrido guiado */
+  ancla?: string
   adjuntos: Adjunto[]
   tiendaId: string
   semanaId: string
@@ -98,7 +101,10 @@ export default function PanelAdjuntos({
   }
 
   return (
-    <section className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
+    <section
+      data-guia={ancla}
+      className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]"
+    >
       <header className="border-b px-4 py-3">
         <h2 className="text-sm font-semibold">Aforo recibido</h2>
         <p className="mt-0.5 text-xs text-[var(--texto-suave)]">
@@ -182,7 +188,7 @@ export default function PanelAdjuntos({
                           }
                           disabled={pendiente}
                           className="rounded border px-1.5 py-0.5 text-[10px] text-[var(--texto-suave)] transition hover:bg-[var(--superficie-alt)]"
-                          title="Marcar que ya pasaste este horario a la plantilla"
+                          title="Marcar que ya pasaste este horario al aforo"
                         >
                           Ya lo pasé
                         </button>

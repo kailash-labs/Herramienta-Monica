@@ -131,7 +131,7 @@ export default function EditorCelda({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold">
-              {colaborador.codigo_empleado ?? colaborador.nombre_completo}
+              {colaborador.nombre_completo}
             </h2>
             <p className="mt-0.5 text-xs text-[var(--texto-suave)]">
               {DIAS[dow]} {fechaCorta(fecha)}

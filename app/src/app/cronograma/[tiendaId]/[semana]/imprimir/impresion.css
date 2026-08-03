@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------------
-   Hoja imprimible del cronograma.
+   Hoja imprimible del aforo.
    Horizontal, una semana por pagina. En pantalla se ve igual que impresa para
    que no haya sorpresas al guardar el PDF.
    --------------------------------------------------------------------------- */
@@ -182,7 +182,7 @@
 
 .rango { display: block; white-space: nowrap; font-weight: 500; }
 
-.celda.vacia { color: #c8cfd9; }
+.celda.vacia { color: #98a2b0; font-size: 9px; }
 
 .celda.ausencia {
   background: #fdf4e3;

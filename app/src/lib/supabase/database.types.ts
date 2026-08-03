@@ -186,6 +186,20 @@ export type Database = {
             foreignKeyName: "alertas_colaborador_id_fkey"
             columns: ["colaborador_id"]
             isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "alertas_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "alertas_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
             referencedRelation: "v_resumen_semanal"
             referencedColumns: ["colaborador_id"]
           },
@@ -262,6 +276,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "colaboradores"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ausencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "ausencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
           },
           {
             foreignKeyName: "ausencias_colaborador_id_fkey"
@@ -362,6 +390,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "colaboradores"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cambios_turno_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "cambios_turno_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
           },
           {
             foreignKeyName: "cambios_turno_colaborador_id_fkey"
@@ -575,6 +617,20 @@ export type Database = {
             foreignKeyName: "conciliacion_detalle_colaborador_id_fkey"
             columns: ["colaborador_id"]
             isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "conciliacion_detalle_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "conciliacion_detalle_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
             referencedRelation: "v_resumen_semanal"
             referencedColumns: ["colaborador_id"]
           },
@@ -724,6 +780,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "colaboradores"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_nomina_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "movimientos_nomina_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
           },
           {
             foreignKeyName: "movimientos_nomina_colaborador_id_fkey"
@@ -1120,6 +1190,20 @@ export type Database = {
             foreignKeyName: "turnos_colaborador_id_fkey"
             columns: ["colaborador_id"]
             isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "turnos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "turnos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
             referencedRelation: "v_resumen_semanal"
             referencedColumns: ["colaborador_id"]
           },
@@ -1245,6 +1329,20 @@ export type Database = {
             foreignKeyName: "validaciones_colaborador_id_fkey"
             columns: ["colaborador_id"]
             isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "validaciones_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "validaciones_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
             referencedRelation: "v_resumen_semanal"
             referencedColumns: ["colaborador_id"]
           },
@@ -1307,6 +1405,63 @@ export type Database = {
           },
         ]
       }
+      v_descansos_dia: {
+        Row: {
+          cargo_id: string | null
+          colaborador_id: string | null
+          dow: number | null
+          es_fin_semana: boolean | null
+          fecha: string | null
+          nombre_completo: string | null
+          tienda_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_cargo_id_fkey"
+            columns: ["cargo_id"]
+            isOneToOne: false
+            referencedRelation: "cargos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semanas_tienda_id_fkey"
+            columns: ["tienda_id"]
+            isOneToOne: false
+            referencedRelation: "tiendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_descansos_mensual: {
+        Row: {
+          cargo_id: string | null
+          colaborador_id: string | null
+          descansos_fin_semana: number | null
+          dias_descanso: number | null
+          domingos: number | null
+          fechas: string[] | null
+          mes: string | null
+          nombre_completo: string | null
+          sabados: number | null
+          tienda_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_cargo_id_fkey"
+            columns: ["cargo_id"]
+            isOneToOne: false
+            referencedRelation: "cargos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semanas_tienda_id_fkey"
+            columns: ["tienda_id"]
+            isOneToOne: false
+            referencedRelation: "tiendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_dias_colaborador: {
         Row: {
           bloques: number | null
@@ -1327,6 +1482,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "colaboradores"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turnos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "turnos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
           },
           {
             foreignKeyName: "turnos_colaborador_id_fkey"
@@ -1403,11 +1572,85 @@ export type Database = {
             foreignKeyName: "movimientos_nomina_colaborador_id_fkey"
             columns: ["colaborador_id"]
             isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "movimientos_nomina_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "movimientos_nomina_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
             referencedRelation: "v_resumen_semanal"
             referencedColumns: ["colaborador_id"]
           },
           {
             foreignKeyName: "movimientos_nomina_tienda_id_fkey"
+            columns: ["tienda_id"]
+            isOneToOne: false
+            referencedRelation: "tiendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_novedades_mensual: {
+        Row: {
+          casos: number | null
+          codigo_empleado: string | null
+          colaborador_id: string | null
+          dias_ausencia: number | null
+          dias_incapacidad: number | null
+          dias_licencia: number | null
+          dias_permiso: number | null
+          dias_total: number | null
+          dias_vacaciones: number | null
+          mes: string | null
+          nombre_completo: string | null
+          tienda_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ausencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ausencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "ausencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "ausencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_resumen_semanal"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "ausencias_colaborador_tienda_fk"
+            columns: ["colaborador_id", "tienda_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id", "tienda_id"]
+          },
+          {
+            foreignKeyName: "ausencias_tienda_id_fkey"
             columns: ["tienda_id"]
             isOneToOne: false
             referencedRelation: "tiendas"
@@ -1477,6 +1720,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "colaboradores"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turnos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_dia"
+            referencedColumns: ["colaborador_id"]
+          },
+          {
+            foreignKeyName: "turnos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "v_descansos_mensual"
+            referencedColumns: ["colaborador_id"]
           },
           {
             foreignKeyName: "turnos_colaborador_id_fkey"
@@ -1572,6 +1829,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      copiar_aforo_semana: {
+        Args: {
+          p_motivo?: Database["public"]["Enums"]["motivo_cambio"]
+          p_semana_destino: string
+          p_semana_origen?: string
+        }
+        Returns: Json
+      }
+      crear_aforo_copiando_anterior: {
+        Args: { p_fecha_inicio: string; p_tienda_id: string }
+        Returns: Json
+      }
+      eliminar_colaborador: { Args: { p_id: string }; Returns: Json }
       generar_alertas_conciliacion: {
         Args: { p_conciliacion_id: string }
         Returns: {
@@ -1596,6 +1866,40 @@ export type Database = {
           to: "alertas"
           isOneToOne: false
           isSetofReturn: true
+        }
+      }
+      guardar_colaborador: {
+        Args: {
+          p_cargo_id: string
+          p_codigo?: string
+          p_documento?: string
+          p_fecha_ingreso?: string
+          p_horas_contrato?: number
+          p_id?: string
+          p_nombre: string
+          p_tienda_id: string
+          p_tipo_jornada?: Database["public"]["Enums"]["tipo_jornada"]
+        }
+        Returns: {
+          activo: boolean
+          cargo_id: string
+          codigo_empleado: string | null
+          created_at: string
+          documento: string | null
+          fecha_ingreso: string | null
+          fecha_retiro: string | null
+          horas_contrato: number
+          id: string
+          nombre_completo: string
+          tienda_id: string
+          tipo_jornada: Database["public"]["Enums"]["tipo_jornada"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "colaboradores"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       guardar_turno_dia: {
@@ -1664,6 +1968,30 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reincorporar_colaborador: {
+        Args: { p_id: string }
+        Returns: {
+          activo: boolean
+          cargo_id: string
+          codigo_empleado: string | null
+          created_at: string
+          documento: string | null
+          fecha_ingreso: string | null
+          fecha_retiro: string | null
+          horas_contrato: number
+          id: string
+          nombre_completo: string
+          tienda_id: string
+          tipo_jornada: Database["public"]["Enums"]["tipo_jornada"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "colaboradores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       resumen_semana: {
         Args: { p_semana_id: string }
         Returns: {
@@ -1678,6 +2006,33 @@ export type Database = {
           horas_planeadas: number
           nombre_completo: string
           turnos_partidos: number
+        }[]
+      }
+      retirar_colaborador: {
+        Args: { p_fecha_retiro?: string; p_id: string }
+        Returns: Json
+      }
+      rotacion_fin_semana: {
+        Args: { p_mes: string; p_tienda_id: string }
+        Returns: {
+          cargo: string
+          colaborador_id: string
+          descansos_fin_semana: number
+          detalle: string
+          maximo_del_cargo: number
+          minimo_del_cargo: number
+          nombre_completo: string
+          sin_rotar: boolean
+        }[]
+      }
+      turnos_frecuentes: {
+        Args: { p_limite?: number; p_tienda_id: string }
+        Returns: {
+          hora_fin: string
+          hora_inicio: string
+          minutos: number
+          tipo_turno: Database["public"]["Enums"]["tipo_turno"]
+          usos: number
         }[]
       }
       validar_semana: {

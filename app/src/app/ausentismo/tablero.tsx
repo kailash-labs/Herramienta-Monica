@@ -21,10 +21,6 @@ type Ausencia = {
 function etiquetaCausa(c: CausaAusencia | null) {
   return c ? (CAUSAS_AUSENCIA.find((x) => x.valor === c)?.etiqueta ?? c) : 'Sin causa'
 }
-function etiquetaTipo(t: TipoAusencia) {
-  return TIPOS_AUSENCIA.find((x) => x.valor === t)?.etiqueta ?? t
-}
-
 export default function Tablero({
   anio,
   tiendaFiltro,
@@ -111,7 +107,7 @@ export default function Tablero({
       </header>
 
       {/* Filtros, en una sola fila arriba de los gráficos */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div data-guia="ausentismo-filtros" className="mt-4 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1">
           <Link
             href={query(anio - 1, tiendaFiltro)}
@@ -168,7 +164,7 @@ export default function Tablero({
         <div className="mt-5 rounded-[var(--radio)] border border-dashed bg-[var(--superficie)] px-6 py-16 text-center">
           <p className="text-sm font-medium">Sin ausencias registradas en {anio}</p>
           <p className="mx-auto mt-2 max-w-md text-sm text-[var(--texto-suave)]">
-            Cada incapacidad que se registre en el cronograma va a aparecer acá.
+            Cada novedad que se registre en el aforo va a aparecer acá.
             El valor de este tablero se construye con el tiempo.
           </p>
         </div>
@@ -197,14 +193,16 @@ export default function Tablero({
             />
           </div>
 
-          {verTabla ? (
-            <TablaDetalle porCausa={porCausa} porTipo={porTipo} porMes={porMes} />
-          ) : (
-            <div className="mt-5 grid gap-5 lg:grid-cols-2">
-              <BarrasCausas datos={porCausa} />
-              <LineaMensual datos={porMes} anio={anio} />
-            </div>
-          )}
+          <div data-guia="ausentismo-causas">
+            {verTabla ? (
+              <TablaDetalle porCausa={porCausa} porTipo={porTipo} porMes={porMes} />
+            ) : (
+              <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                <BarrasCausas datos={porCausa} />
+                <LineaMensual datos={porMes} anio={anio} />
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

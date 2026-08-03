@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { mensajeAmable } from '@/lib/mensajes'
 import type { Database } from '@/lib/supabase/database.types'
 
 type TipoAusencia = Database['public']['Enums']['tipo_ausencia']
@@ -26,20 +27,44 @@ export async function registrarAusencia(entrada: {
   const supabase = await createClient()
 
   if (entrada.tipo === 'incapacidad' && !entrada.causa) {
-    return { ok: false, error: 'Una incapacidad necesita la causa.' }
+    return { ok: false, error: 'Una incapacidad necesita que elijas la causa.' }
   }
 
   if (entrada.fechaFin < entrada.fechaInicio) {
-    return { ok: false, error: 'La fecha de fin no puede ser anterior a la de inicio.' }
+    return {
+      ok: false,
+      error: 'La fecha de regreso no puede ser anterior a la de inicio.',
+    }
   }
 
-  // Cuantos turnos hay en el rango: sirve para contarle al usuario que se libero
-  const { count } = await supabase
-    .from('turnos')
-    .select('id', { count: 'exact', head: true })
-    .eq('colaborador_id', entrada.colaboradorId)
-    .gte('fecha', entrada.fechaInicio)
-    .lte('fecha', entrada.fechaFin)
+  // Una ausencia puede cruzar varias semanas, y registrar_ausencia libera turnos
+  // en todas las que no estén cerradas. Se resuelven acá porque hacen falta tres
+  // veces: para contar lo que se va a liberar, para revalidar las reglas y para
+  // invalidar el caché de cada una.
+  const { data: afectadas } = await supabase
+    .from('semanas')
+    .select('id, fecha_inicio')
+    .eq('tienda_id', entrada.tiendaId)
+    .neq('estado', 'cerrada')
+    .lte('fecha_inicio', entrada.fechaFin)
+    .gte('fecha_fin', entrada.fechaInicio)
+
+  const semanas = afectadas ?? []
+
+  // El conteo se limita a esas semanas: contar todos los turnos del rango le
+  // prometería al usuario que se liberaron turnos de una semana cerrada, donde
+  // el trigger no deja tocar nada.
+  let porLiberar = 0
+  if (entrada.liberarTurnos && semanas.length > 0) {
+    const { count } = await supabase
+      .from('turnos')
+      .select('id', { count: 'exact', head: true })
+      .eq('colaborador_id', entrada.colaboradorId)
+      .in('semana_id', semanas.map((s) => s.id))
+      .gte('fecha', entrada.fechaInicio)
+      .lte('fecha', entrada.fechaFin)
+    porLiberar = count ?? 0
+  }
 
   const { error } = await supabase.rpc('registrar_ausencia', {
     p_colaborador_id: entrada.colaboradorId,
@@ -51,25 +76,21 @@ export async function registrarAusencia(entrada: {
     p_liberar_turnos: entrada.liberarTurnos,
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mensajeAmable(error, 'registrarAusencia') }
 
   // Liberar turnos cambia las horas: las reglas se recalculan de una
   if (entrada.liberarTurnos) {
-    const { data: semanas } = await supabase
-      .from('semanas')
-      .select('id')
-      .eq('tienda_id', entrada.tiendaId)
-      .neq('estado', 'cerrada')
-      .lte('fecha_inicio', entrada.fechaFin)
-      .gte('fecha_fin', entrada.fechaInicio)
-
-    for (const s of semanas ?? []) {
+    for (const s of semanas) {
       await supabase.rpc('validar_semana', { p_semana_id: s.id })
     }
   }
 
+  // Cada semana tocada, no solo la que está en pantalla: si no, las otras
+  // muestran turnos que ya no existen.
   revalidatePath(ruta(entrada.tiendaId, entrada.semana))
-  return { ok: true, liberados: entrada.liberarTurnos ? (count ?? 0) : 0 }
+  for (const s of semanas) revalidatePath(ruta(entrada.tiendaId, s.fecha_inicio))
+
+  return { ok: true, liberados: entrada.liberarTurnos ? porLiberar : 0 }
 }
 
 export async function borrarAusencia(
@@ -80,7 +101,7 @@ export async function borrarAusencia(
   const supabase = await createClient()
 
   const { error } = await supabase.from('ausencias').delete().eq('id', ausenciaId)
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mensajeAmable(error, 'borrarAusencia') }
 
   revalidatePath(ruta(tiendaId, semana))
   return { ok: true }

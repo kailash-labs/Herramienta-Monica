@@ -2,15 +2,18 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { justificarHallazgo } from './acciones'
+import { justificarAlerta } from './acciones'
 import type { Validacion } from './grilla'
 
-export default function PanelHallazgos({
+export default function PanelAlertas({
   validaciones,
   colaboradores,
   tiendaId,
   semana,
+  ancla,
 }: {
+  /** Nombre del anclaje del recorrido guiado */
+  ancla?: string
   validaciones: Validacion[]
   colaboradores: { id: string; codigo_empleado: string | null; nombre_completo: string }[]
   tiendaId: string
@@ -27,14 +30,13 @@ export default function PanelHallazgos({
 
   function nombre(id: string | null) {
     if (!id) return null
-    const c = colaboradores.find((x) => x.id === id)
-    return c?.codigo_empleado ?? c?.nombre_completo ?? null
+    return colaboradores.find((x) => x.id === id)?.nombre_completo ?? null
   }
 
   function aceptar(id: string) {
     setError(null)
     iniciar(async () => {
-      const r = await justificarHallazgo(tiendaId, semana, id, texto)
+      const r = await justificarAlerta(tiendaId, semana, id, texto)
       if (r.ok) {
         setJustificando(null)
         setTexto('')
@@ -44,19 +46,22 @@ export default function PanelHallazgos({
   }
 
   return (
-    <section className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
+    <section
+      data-guia={ancla}
+      className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]"
+    >
       <header className="border-b px-4 py-3">
-        <h2 className="text-sm font-semibold">Lo que el motor encontró</h2>
+        <h2 className="text-sm font-semibold">Alertas de la semana</h2>
         <p className="mt-0.5 text-xs text-[var(--texto-suave)]">
-          Los bloqueantes impiden publicar. Si un caso es válido, se justifica y
-          queda registrado.
+          Las que bloquean impiden publicar. Si el caso está bien igual, se
+          justifica y queda registrado quién lo aprobó.
         </p>
       </header>
 
       <div className="divide-y">
         {abiertas.length === 0 && (
           <p className="px-4 py-6 text-sm text-[var(--texto-suave)]">
-            Sin hallazgos abiertos. La semana cumple las reglas.
+            No hay alertas abiertas: la semana cumple las reglas.
           </p>
         )}
 
@@ -77,10 +82,11 @@ export default function PanelHallazgos({
 
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] leading-snug">{v.mensaje}</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--texto-tenue)]">
-                    {v.codigo_regla}
-                    {quien && ` · ${quien}`}
-                  </p>
+                  {quien && (
+                    <p className="mt-0.5 text-[11px] text-[var(--texto-tenue)]">
+                      {quien}
+                    </p>
+                  )}
 
                   {justificando === v.id ? (
                     <div className="mt-2.5">
@@ -134,7 +140,7 @@ export default function PanelHallazgos({
       {aceptadas.length > 0 && (
         <details className="border-t px-4 py-3">
           <summary className="cursor-pointer text-xs text-[var(--texto-suave)]">
-            {aceptadas.length} hallazgo{aceptadas.length > 1 ? 's' : ''} justificado
+            {aceptadas.length} alerta{aceptadas.length > 1 ? 's' : ''} justificada
             {aceptadas.length > 1 ? 's' : ''}
           </summary>
           <ul className="mt-2 space-y-2">

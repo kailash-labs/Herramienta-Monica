@@ -96,7 +96,7 @@ export default function HojaImpresion({
       {/* Barra que no se imprime */}
       <div className="barra">
         <Link href={`/cronograma/${tienda.id}/${semana.fecha_inicio}`} className="volver">
-          ← Volver al cronograma
+          ← Volver al aforo
         </Link>
         <div className="acciones">
           <span className="ayuda">
@@ -115,7 +115,7 @@ export default function HojaImpresion({
               {tienda.codigo} · {tienda.nombre}
             </h1>
             <p className="sub">
-              Cronograma operativo · semana del {rangoSemana(semana.fecha_inicio)}
+              Aforo de la semana del {rangoSemana(semana.fecha_inicio)}
               {tienda.ciudad ? ` · ${tienda.ciudad}` : ''}
             </p>
           </div>
@@ -172,7 +172,7 @@ export default function HojaImpresion({
                   return (
                     <tr key={c.id}>
                       <td className="col-nombre">
-                        {c.codigo_empleado ?? c.nombre_completo}
+                        {c.nombre_completo}
                       </td>
 
                       {fechas.map((f) => {
@@ -189,7 +189,7 @@ export default function HojaImpresion({
                         if (bloques.length === 0) {
                           return (
                             <td key={f} className="celda vacia">
-                              ·
+                              Descansa
                             </td>
                           )
                         }

@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import Shell from '@/components/shell'
 import { createClient } from '@/lib/supabase/server'
-import { lunesDe, rangoSemana } from '@/lib/dominio'
 
-export default async function Home() {
+/**
+ * Elegir tienda antes de ver su gente. Igual que en los aforos: quien administra
+ * una sola tienda no debería tener que elegir nada.
+ */
+export default async function ElegirTiendaPersonal() {
   const supabase = await createClient()
-  const semanaActual = lunesDe(new Date())
 
   const { data: tiendas } = await supabase
     .from('tiendas')
@@ -14,24 +16,21 @@ export default async function Home() {
     .eq('activa', true)
     .order('codigo')
 
-  // Un admin de una sola tienda no deberia tener que elegir
-  if (tiendas?.length === 1) {
-    redirect(`/cronograma/${tiendas[0].id}/${semanaActual}`)
-  }
+  if (tiendas?.length === 1) redirect(`/personal/${tiendas[0].id}`)
 
   return (
-    <Shell actual="cronograma">
+    <Shell actual="personal">
       <div className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="text-base font-semibold tracking-tight">Aforos</h1>
+        <h1 className="text-base font-semibold tracking-tight">Personas</h1>
         <p className="mt-1 text-sm text-[var(--texto-suave)]">
-          Semana del {rangoSemana(semanaActual)}
+          Elegí la tienda cuya gente querés ver.
         </p>
 
-        <ul data-guia="lista-tiendas" className="mt-6 space-y-2">
+        <ul className="mt-6 space-y-2">
           {(tiendas ?? []).map((t) => (
             <li key={t.id}>
               <Link
-                href={`/cronograma/${t.id}/${semanaActual}`}
+                href={`/personal/${t.id}`}
                 className="flex items-center justify-between rounded-[var(--radio)] border bg-[var(--superficie)] px-4 py-3 transition hover:border-[var(--borde-fuerte)]"
               >
                 <span>

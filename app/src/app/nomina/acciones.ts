@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { mensajeAmable } from '@/lib/mensajes'
 
 type Resultado =
   | { ok: true; resumen: { total: number; cruzadas: number; sinColaborador: number; sinConcepto: number } }
@@ -116,7 +117,7 @@ export async function cargarReporte(entrada: {
         .from('reportes_nomina')
         .update({ estado: 'error', error_detalle: error.message })
         .eq('id', reporte.id)
-      return { ok: false, error: error.message }
+      return { ok: false, error: mensajeAmable(error, 'nomina/cargar') }
     }
   }
 
@@ -137,7 +138,7 @@ export async function cargarReporte(entrada: {
 export async function borrarReporte(reporteId: string): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from('reportes_nomina').delete().eq('id', reporteId)
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mensajeAmable(error, 'nomina') }
   revalidatePath('/nomina')
   revalidatePath('/consolidado')
   return { ok: true }

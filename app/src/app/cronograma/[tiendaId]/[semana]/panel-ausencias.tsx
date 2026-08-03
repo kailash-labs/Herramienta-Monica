@@ -2,12 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  CAUSAS_AUSENCIA,
-  TIPOS_AUSENCIA,
-  fechaCorta,
-  sumarDias,
-} from '@/lib/dominio'
+import { CAUSAS_AUSENCIA, TIPOS_AUSENCIA, fechaCorta } from '@/lib/dominio'
 import type { CausaAusencia, TipoAusencia } from '@/lib/dominio'
 import { borrarAusencia, registrarAusencia } from './acciones-ausencias'
 
@@ -41,7 +36,10 @@ export default function PanelAusencias({
   tiendaId,
   semana,
   cerrada,
+  ancla,
 }: {
+  /** Nombre del anclaje del recorrido guiado */
+  ancla?: string
   ausencias: Ausencia[]
   colaboradores: Colaborador[]
   tiendaId: string
@@ -50,15 +48,19 @@ export default function PanelAusencias({
 }) {
   const router = useRouter()
   const [abierto, setAbierto] = useState(false)
+  const [aviso, setAviso] = useState<string | null>(null)
 
   return (
-    <section className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
+    <section
+      data-guia={ancla}
+      className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]"
+    >
       <header className="flex items-start gap-3 border-b px-4 py-3">
         <div className="flex-1">
-          <h2 className="text-sm font-semibold">Ausencias de la semana</h2>
+          <h2 className="text-sm font-semibold">Novedades de la semana</h2>
           <p className="mt-0.5 text-xs text-[var(--texto-suave)]">
-            Registrar acá libera los turnos y guarda la causa. Es lo que alimenta
-            el acumulado de ausentismo.
+            Registrar acá libera los turnos de esos días y guarda la causa. Es lo
+            que alimenta el acumulado de ausentismo.
           </p>
         </div>
         {!cerrada && (
@@ -71,9 +73,18 @@ export default function PanelAusencias({
         )}
       </header>
 
+      {aviso && (
+        <p
+          role="status"
+          className="border-b bg-[var(--ok-fondo)] px-4 py-2 text-xs text-[var(--ok)]"
+        >
+          {aviso}
+        </p>
+      )}
+
       {ausencias.length === 0 ? (
         <p className="px-4 py-6 text-sm text-[var(--texto-suave)]">
-          Ninguna ausencia registrada en esta semana.
+          Sin novedades registradas en esta semana.
         </p>
       ) : (
         <ul className="divide-y">
@@ -84,7 +95,7 @@ export default function PanelAusencias({
               <li key={a.id} className="flex items-start gap-3 px-4 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-medium">
-                    {c?.codigo_empleado ?? c?.nombre_completo ?? 'Colaborador'}
+                    {c?.nombre_completo ?? 'Colaborador'}
                   </p>
                   <p className="mt-0.5 text-[11px] text-[var(--texto-suave)]">
                     {etiquetaTipo(a.tipo)}
@@ -121,6 +132,10 @@ export default function PanelAusencias({
           tiendaId={tiendaId}
           semana={semana}
           onCerrar={() => setAbierto(false)}
+          onListo={(mensaje) => {
+            setAviso(mensaje)
+            setAbierto(false)
+          }}
         />
       )}
     </section>
@@ -149,9 +164,9 @@ function BotonQuitar({
       }
       disabled={pendiente}
       className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-[var(--texto-tenue)] transition hover:bg-[var(--superficie-alt)]"
-      title="Quitar el registro. Los turnos liberados no vuelven solos."
+      title="Quitar este registro. Los turnos liberados no vuelven solos."
     >
-      Quitar
+      Quitar la novedad
     </button>
   )
 }
@@ -161,11 +176,14 @@ function ModalAusencia({
   tiendaId,
   semana,
   onCerrar,
+  onListo,
 }: {
   colaboradores: Colaborador[]
   tiendaId: string
   semana: string
   onCerrar: () => void
+  /** Cuántos turnos se liberaron: el usuario tiene derecho a saberlo */
+  onListo: (mensaje: string) => void
 }) {
   const router = useRouter()
   const [pendiente, iniciar] = useTransition()
@@ -173,14 +191,21 @@ function ModalAusencia({
 
   const [colaboradorId, setColaboradorId] = useState(colaboradores[0]?.id ?? '')
   const [tipo, setTipo] = useState<TipoAusencia>('incapacidad')
-  const [causa, setCausa] = useState<CausaAusencia>('viral')
+  // Sin valor por defecto a proposito: si arrancara en "viral", una causa
+  // clinica que nadie eligio entraria al tablero de ausentismo con el que se
+  // decide sobre seguridad en el trabajo.
+  const [causa, setCausa] = useState<CausaAusencia | ''>('')
   const [desde, setDesde] = useState(semana)
   const [hasta, setHasta] = useState(semana)
   const [descripcion, setDescripcion] = useState('')
   const [liberar, setLiberar] = useState(true)
 
-  const finSemana = sumarDias(semana, 6)
   const exigeCausa = tipo === 'incapacidad'
+  const faltaCausa = exigeCausa && !causa
+  // Un rango largo casi siempre es un año mal tipeado, y liberar turnos de meses
+  // enteros no tiene deshacer.
+  const dias = Math.round((Date.parse(hasta) - Date.parse(desde)) / 86_400_000) + 1
+  const rangoRaro = dias > 60
 
   function guardar() {
     setError(null)
@@ -190,7 +215,7 @@ function ModalAusencia({
         semana,
         colaboradorId,
         tipo,
-        causa: exigeCausa || causa ? causa : null,
+        causa: causa || null,
         fechaInicio: desde,
         fechaFin: hasta,
         descripcion,
@@ -201,7 +226,11 @@ function ModalAusencia({
         setError(r.error)
         return
       }
-      onCerrar()
+      onListo(
+        r.liberados > 0
+          ? `Registré la novedad y liberé ${r.liberados} turno${r.liberados > 1 ? 's' : ''}.`
+          : 'Registré la novedad.',
+      )
       router.refresh()
     })
   }
@@ -215,7 +244,7 @@ function ModalAusencia({
         className="w-full max-w-md rounded-[var(--radio)] border bg-[var(--superficie)] p-5 shadow-xl"
       >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-sm font-semibold">Registrar ausencia</h2>
+          <h2 className="text-sm font-semibold">Registrar una novedad</h2>
           <button
             onClick={onCerrar}
             className="rounded-md px-2 py-1 text-sm text-[var(--texto-tenue)] transition hover:bg-[var(--superficie-alt)]"
@@ -234,7 +263,8 @@ function ModalAusencia({
           >
             {colaboradores.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.codigo_empleado ?? c.nombre_completo}
+                {c.nombre_completo}
+                {c.codigo_empleado && ` · ${c.codigo_empleado}`}
               </option>
             ))}
           </select>
@@ -257,12 +287,15 @@ function ModalAusencia({
           </label>
 
           <label className="block text-[11px] text-[var(--texto-suave)]">
-            Causa {exigeCausa && <span className="text-[var(--error)]">·</span>}
+            Causa {exigeCausa && <span className="text-[var(--error)]">obligatoria</span>}
             <select
               value={causa}
-              onChange={(e) => setCausa(e.target.value as CausaAusencia)}
-              className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--acento)]"
+              onChange={(e) => setCausa(e.target.value as CausaAusencia | '')}
+              className={`mt-1 w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--acento)] ${
+                faltaCausa ? 'border-[var(--error)]/50' : ''
+              }`}
             >
+              <option value="">{exigeCausa ? 'Elegí la causa…' : 'Sin especificar'}</option>
               {CAUSAS_AUSENCIA.map((c) => (
                 <option key={c.valor} value={c.valor}>
                   {c.etiqueta}
@@ -275,11 +308,11 @@ function ModalAusencia({
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block text-[11px] text-[var(--texto-suave)]">
             Desde
+            {/* Sin min ni max: una incapacidad que empezó la semana pasada es
+                el caso normal, no la excepción. */}
             <input
               type="date"
               value={desde}
-              min={semana}
-              max={finSemana}
               onChange={(e) => {
                 setDesde(e.target.value)
                 if (e.target.value > hasta) setHasta(e.target.value)
@@ -333,12 +366,20 @@ function ModalAusencia({
           </p>
         )}
 
+        {rangoRaro && (
+          <p className="mt-3 rounded-md bg-[var(--alerta-fondo)] px-3 py-2 text-xs text-[var(--alerta)]">
+            Son {dias} días, del {fechaCorta(desde)} al {fechaCorta(hasta)}. Si es
+            correcto seguí; si no, revisá las fechas antes de guardar.
+          </p>
+        )}
+
         <button
           onClick={guardar}
-          disabled={pendiente || !colaboradorId}
-          className="mt-5 w-full rounded-md bg-[var(--texto)] px-3 py-2 text-sm font-medium text-white transition hover:bg-black disabled:opacity-50"
+          disabled={pendiente || !colaboradorId || faltaCausa}
+          title={faltaCausa ? 'Falta elegir la causa de la incapacidad' : undefined}
+          className="mt-5 w-full rounded-md bg-[var(--texto)] px-3 py-2 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {pendiente ? 'Guardando…' : 'Registrar'}
+          {pendiente ? 'Guardando…' : 'Registrar la novedad'}
         </button>
       </div>
     </div>
