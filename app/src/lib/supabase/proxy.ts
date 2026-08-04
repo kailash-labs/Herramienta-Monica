@@ -1,14 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { credencialesSupabase } from './entorno'
 
 const PUBLICAS = ['/ingresar', '/auth']
 
 export async function actualizarSesion(request: NextRequest) {
   let respuesta = NextResponse.next({ request })
 
+  // Acá arriba de todo a propósito: si falta la configuración, el mensaje que
+  // queda en el log del servidor dice qué falta, en vez del «Internal Server
+  // Error» sin pistas que da fallar adentro de createServerClient.
+  const [url, clave] = credencialesSupabase()
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    url,
+    clave,
     {
       cookies: {
         getAll() {
