@@ -36,7 +36,7 @@ export default function NavegacionSemana({
 
   return (
     <div className="flex flex-wrap items-center gap-4">
-      <div>
+      <div data-guia="semana-titulo">
         <div className="flex items-center gap-2.5">
           <h1 className="text-base font-semibold tracking-tight">
             {tienda.codigo} · {tienda.nombre}
@@ -54,7 +54,7 @@ export default function NavegacionSemana({
         </p>
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div data-guia="semana-nav" className="ml-auto flex items-center gap-1">
         <Link
           href={`/cronograma/${tiendaId}/${anterior}`}
           className="rounded-md border bg-[var(--superficie)] px-2.5 py-1.5 text-sm text-[var(--texto-suave)] transition hover:bg-[var(--superficie-alt)]"

@@ -136,6 +136,9 @@ export default function CargadorNomina({
   const [tiendaId, setTiendaId] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [resumen, setResumen] = useState<string | null>(null)
+  // Qué reporte está esperando confirmación de borrado: es en cascada y no
+  // tiene deshacer, así que es el único de la app que se pregunta dos veces.
+  const [porBorrar, setPorBorrar] = useState<string | null>(null)
 
   async function procesar(archivo: File) {
     setError(null)
@@ -198,7 +201,7 @@ export default function CargadorNomina({
 
       const { total, cruzadas, sinColaborador, sinConcepto } = r.resumen
       setResumen(
-        `${total} filas leídas · ${cruzadas} cruzadas` +
+        `${total} filas leídas · ${cruzadas} comparadas` +
           (sinColaborador ? ` · ${sinColaborador} sin colaborador` : '') +
           (sinConcepto ? ` · ${sinConcepto} sin concepto` : ''),
       )
@@ -211,7 +214,10 @@ export default function CargadorNomina({
 
   return (
     <>
-      <section className="mt-5 rounded-[var(--radio)] border bg-[var(--superficie)] p-5 shadow-[var(--sombra)]">
+      <section
+        data-guia="nomina-cargar"
+        className="mt-5 rounded-[var(--radio)] border bg-[var(--superficie)] p-5 shadow-[var(--sombra)]"
+      >
         <h2 className="text-sm font-semibold">Cargar el reporte del mes</h2>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -301,10 +307,10 @@ export default function CargadorNomina({
         <section className="mt-6 rounded-[var(--radio)] border border-[var(--alerta)]/30 bg-[var(--superficie)] shadow-[var(--sombra)]">
           <header className="border-b px-4 py-3">
             <h2 className="text-sm font-semibold text-[var(--alerta)]">
-              {sinMatch.length} movimiento{sinMatch.length > 1 ? 's' : ''} sin cruzar
+              {sinMatch.length} movimiento{sinMatch.length > 1 ? 's' : ''} sin comparar
             </h2>
             <p className="mt-0.5 text-xs text-[var(--texto-suave)]">
-              Quedaron guardados pero fuera de la conciliación. Suele ser un
+              Quedaron guardados pero fuera de la comparación. Suele ser un
               código de empleado nuevo o un concepto que falta dar de alta.
             </p>
           </header>
@@ -338,7 +344,10 @@ export default function CargadorNomina({
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
+        <section
+          data-guia="nomina-reportes"
+          className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]"
+        >
           <header className="border-b px-4 py-3">
             <h2 className="text-sm font-semibold">Reportes cargados</h2>
           </header>
@@ -358,27 +367,55 @@ export default function CargadorNomina({
                       {r.periodo} · {r.filas_con_match}/{r.filas_totales} cruzadas
                     </p>
                   </div>
-                  <button
-                    onClick={() =>
-                      iniciar(async () => {
-                        await borrarReporte(r.id)
-                        router.refresh()
-                      })
-                    }
-                    disabled={pendiente}
-                    className="rounded border px-1.5 py-0.5 text-[10px] text-[var(--texto-tenue)] transition hover:bg-[var(--superficie-alt)]"
-                  >
-                    Quitar
-                  </button>
+                  {porBorrar === r.id ? (
+                    <div className="shrink-0 text-right">
+                      <p className="text-[11px] text-[var(--error)]">
+                        Se borran las {r.filas_totales} filas de {r.periodo} y la
+                        comparación de ese período.
+                      </p>
+                      <div className="mt-1 flex justify-end gap-1.5">
+                        <button
+                          onClick={() =>
+                            iniciar(async () => {
+                              await borrarReporte(r.id)
+                              setPorBorrar(null)
+                              router.refresh()
+                            })
+                          }
+                          disabled={pendiente}
+                          className="rounded bg-[var(--error)] px-2 py-1 text-[11px] font-medium text-white disabled:opacity-50"
+                        >
+                          Borrar
+                        </button>
+                        <button
+                          onClick={() => setPorBorrar(null)}
+                          className="rounded border px-2 py-1 text-[11px] text-[var(--texto-suave)]"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setPorBorrar(r.id)}
+                      disabled={pendiente}
+                      className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-[var(--texto-tenue)] transition hover:bg-[var(--superficie-alt)]"
+                    >
+                      Borrar el reporte
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
           )}
         </section>
 
-        <section className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
+        <section
+          data-guia="nomina-conceptos"
+          className="rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]"
+        >
           <header className="border-b px-4 py-3">
-            <h2 className="text-sm font-semibold">Conceptos que entran al cruce</h2>
+            <h2 className="text-sm font-semibold">Conceptos que entran a la comparación</h2>
             <p className="mt-0.5 text-xs text-[var(--texto-suave)]">
               Todo lo demás del reporte se descarta solo.
             </p>
@@ -403,8 +440,9 @@ export default function CargadorNomina({
             ))}
           </ul>
           <p className="border-t px-4 py-2.5 text-[11px] text-[var(--texto-tenue)]">
-            Estos códigos son preliminares. Al llegar el primer reporte real de
-            Frisby hay que ajustarlos a los que traiga el archivo.
+            Esta lista sigue los códigos estándar de nómina en Colombia. Con un
+            reporte real de Frisby la ajustamos a los códigos que use la empresa,
+            y desde ahí el cruce es exacto.
           </p>
         </section>
       </div>

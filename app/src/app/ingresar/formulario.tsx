@@ -26,10 +26,17 @@ export default function FormularioIngreso() {
     })
 
     if (error) {
+      // Los errores de GoTrue vienen en inglés: ninguno se muestra tal cual.
+      const conocidos: Record<string, string> = {
+        'Invalid login credentials': 'Correo o contraseña incorrectos.',
+        'Email not confirmed': 'Todavía falta confirmar el correo.',
+      }
+      console.error('[ingresar]', error)
       setError(
-        error.message === 'Invalid login credentials'
-          ? 'Correo o contraseña incorrectos.'
-          : error.message,
+        conocidos[error.message] ??
+          (error.status === 429
+            ? 'Demasiados intentos. Esperá un minuto y volvé a probar.'
+            : 'No pudimos entrar. Revisá los datos y volvé a intentar.'),
       )
       setCargando(false)
       return

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { mensajeAmable } from '@/lib/mensajes'
 import type { Database } from '@/lib/supabase/database.types'
 
 type EstadoAdjunto = Database['public']['Enums']['estado_adjunto']
@@ -34,7 +35,7 @@ export async function registrarAdjunto(entrada: {
     origen: entrada.origen,
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mensajeAmable(error, 'adjuntos') }
 
   revalidatePath(ruta(entrada.tiendaId, entrada.semana))
   return { ok: true }
@@ -53,7 +54,7 @@ export async function cambiarEstadoAdjunto(
     .update({ estado })
     .eq('id', adjuntoId)
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mensajeAmable(error, 'adjuntos') }
 
   revalidatePath(ruta(tiendaId, semana))
   return { ok: true }
@@ -72,14 +73,14 @@ export async function borrarAdjunto(
     .from('aforos')
     .remove([storagePath])
 
-  if (errStorage) return { ok: false, error: errStorage.message }
+  if (errStorage) return { ok: false, error: mensajeAmable(errStorage, 'adjuntos/storage') }
 
   const { error } = await supabase
     .from('aforo_adjuntos')
     .delete()
     .eq('id', adjuntoId)
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mensajeAmable(error, 'adjuntos') }
 
   revalidatePath(ruta(tiendaId, semana))
   return { ok: true }

@@ -1,23 +1,27 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   DIAS,
   ETIQUETA_TIPO,
   duracionMinutos,
+  fechaCorta,
   hhmm,
   horas,
   sumarDias,
 } from '@/lib/dominio'
 import type { EstadoSemana, TipoTurno } from '@/lib/dominio'
-import { publicar, revalidar } from './acciones'
+import { copiarAforoAnterior, publicar } from './acciones'
+import AforoLista from './aforo-lista'
+import { tomarAviso } from './aviso-traspaso'
 import EditorCelda from './editor-celda'
-import PanelHallazgos from './panel-hallazgos'
+import PanelAlertas from './panel-alertas'
 import PanelAdjuntos from './panel-adjuntos'
 import PanelAusencias, { type Ausencia } from './panel-ausencias'
 import NavegacionSemana from './navegacion-semana'
+import Importador from './importador'
 
 type Turno = {
   id: string
@@ -36,9 +40,16 @@ type Colaborador = {
   codigo_empleado: string | null
   cargo_id: string
   horas_contrato: number
+  tipo_jornada: string
 }
 
-type Cargo = { id: string; codigo: string; nombre: string; color: string | null; orden: number }
+type Cargo = {
+  id: string
+  codigo: string
+  nombre: string
+  color: string | null
+  orden: number
+}
 
 type FilaResumen = {
   colaborador_id: string
@@ -48,6 +59,14 @@ type FilaResumen = {
   aperturas: number
   cierres: number
   turnos_partidos: number
+}
+
+type Frecuente = {
+  hora_inicio: string
+  hora_fin: string
+  tipo_turno: TipoTurno
+  minutos: number
+  usos: number
 }
 
 export type Validacion = {
@@ -70,9 +89,17 @@ export type Adjunto = {
   mime_type: string | null
 }
 
-export default function Grilla({
+/**
+ * El aforo de una semana. Una sola pantalla para las dos formas de usarla:
+ * en pantalla angosta se ve la lista por persona, en pantalla ancha la grilla
+ * de siete columnas. Las dos están en el DOM y el CSS muestra una — sin
+ * detección por JavaScript, que con SSR da o parpadeo o desajuste de
+ * hidratación, y sin pedirle al usuario que elija una vista.
+ */
+export default function Aforo({
   tienda,
   semana,
+  semanaAnterior,
   cargos,
   colaboradores,
   turnos,
@@ -80,9 +107,17 @@ export default function Grilla({
   validaciones,
   adjuntos,
   ausencias,
+  frecuentes,
+  lecturaDisponible,
 }: {
   tienda: { id: string; codigo: string; nombre: string }
-  semana: { id: string; fecha_inicio: string; estado: EstadoSemana; notas: string | null }
+  semana: {
+    id: string
+    fecha_inicio: string
+    estado: EstadoSemana
+    notas: string | null
+  }
+  semanaAnterior: string
   cargos: Cargo[]
   colaboradores: Colaborador[]
   turnos: Turno[]
@@ -90,14 +125,36 @@ export default function Grilla({
   validaciones: Validacion[]
   adjuntos: Adjunto[]
   ausencias: Ausencia[]
+  frecuentes: Frecuente[]
+  /** Si el servidor puede leer fotos y PDF. Si no, el botón lo dice y no falla */
+  lecturaDisponible: boolean
 }) {
   const router = useRouter()
   const [pendiente, iniciar] = useTransition()
-  const [aviso, setAviso] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
-  const [celda, setCelda] = useState<{ colaborador: Colaborador; fecha: string } | null>(null)
+  const [aviso, setAviso] = useState<{
+    tipo: 'ok' | 'error'
+    texto: string
+  } | null>(null)
+  const [celda, setCelda] = useState<{
+    colaborador: Colaborador
+    fecha: string
+  } | null>(null)
+  const [importando, setImportando] = useState(false)
+  const [menu, setMenu] = useState(false)
+
+  // Si venimos de copiar el aforo desde la pantalla vacía, el resumen de la
+  // copia quedó guardado allá: se muestra acá y se descarta.
+  useEffect(() => {
+    const texto = tomarAviso()
+    // Leer un traspaso de un solo uso al montar es justamente para lo que sirve
+    // un efecto; la regla no distingue ese caso de un estado derivado mal hecho.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (texto) setAviso({ tipo: 'ok', texto })
+  }, [])
 
   const fechas = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => sumarDias(semana.fecha_inicio, i)),
+    () =>
+      Array.from({ length: 7 }, (_, i) => sumarDias(semana.fecha_inicio, i)),
     [semana.fecha_inicio],
   )
 
@@ -130,7 +187,7 @@ export default function Grilla({
     return m
   }, [ausencias])
 
-  const hallazgosPorColaborador = useMemo(() => {
+  const alertasPorColaborador = useMemo(() => {
     const m = new Map<string, Validacion[]>()
     for (const v of validaciones) {
       if (!v.colaborador_id || v.estado !== 'abierta') continue
@@ -142,11 +199,17 @@ export default function Grilla({
   }, [validaciones])
 
   const abiertas = validaciones.filter((v) => v.estado === 'abierta')
+  // Mismo predicado que usa publicar_semana en la base. Si cambia uno, el otro
+  // tambien: es lo que hace que el boton diga la verdad antes de tocarlo.
   const bloqueantes = abiertas.filter((v) => v.severidad === 'bloqueante')
   const cerrada = semana.estado === 'cerrada'
+  const vacia = turnos.length === 0
 
   const totalHoras = resumen.reduce((s, r) => s + Number(r.horas_planeadas), 0)
-  const totalExtra = resumen.reduce((s, r) => s + Number(r.horas_extra_planeadas), 0)
+  const totalExtra = resumen.reduce(
+    (s, r) => s + Number(r.horas_extra_planeadas),
+    0,
+  )
 
   const cargosConGente = cargos
     .map((c) => ({
@@ -155,12 +218,18 @@ export default function Grilla({
     }))
     .filter((c) => c.gente.length > 0)
 
-  function accion(fn: () => Promise<{ ok: true } | { ok: false; error: string }>, exito: string) {
+  function accion(
+    fn: () => Promise<
+      { ok: true; resumen?: string } | { ok: false; error: string }
+    >,
+    exito: string,
+  ) {
     setAviso(null)
+    setMenu(false)
     iniciar(async () => {
       const r = await fn()
       if (r.ok) {
-        setAviso({ tipo: 'ok', texto: exito })
+        setAviso({ tipo: 'ok', texto: r.resumen ?? exito })
         router.refresh()
       } else {
         setAviso({ tipo: 'error', texto: r.error })
@@ -168,8 +237,11 @@ export default function Grilla({
     })
   }
 
+  const puedePublicar = semana.estado === 'borrador'
+  const trabado = bloqueantes.length > 0
+
   return (
-    <div className="mx-auto max-w-[1600px] px-6 py-6">
+    <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 sm:py-6">
       <NavegacionSemana
         tiendaId={tienda.id}
         semana={semana.fecha_inicio}
@@ -177,55 +249,125 @@ export default function Grilla({
         estado={semana.estado}
       />
 
-      {/* Resumen de la semana */}
-      <div className="mt-5 flex flex-wrap items-stretch gap-3">
-        <Metrica etiqueta="Horas planeadas" valor={horas(totalHoras * 60)} sufijo="h" />
-        <Metrica
-          etiqueta="Extra planeada"
-          valor={horas(totalExtra * 60)}
-          sufijo="h"
-          tono={totalExtra > 0 ? 'alerta' : 'neutro'}
-        />
-        <Metrica etiqueta="Colaboradores" valor={String(colaboradores.length)} />
-        <Metrica
-          etiqueta="Hallazgos abiertos"
-          valor={String(abiertas.length)}
-          tono={bloqueantes.length > 0 ? 'error' : abiertas.length > 0 ? 'alerta' : 'ok'}
-        />
+      {/* Resumen de la semana. "Colaboradores" se esconde en pantalla angosta:
+          es el dato menos accionable de los cuatro. */}
+      <div className="mt-5 flex flex-wrap items-stretch gap-2 sm:gap-3">
+        <div
+          data-guia="metricas"
+          className="flex flex-wrap items-stretch gap-2 sm:gap-3"
+        >
+          <Metrica
+            etiqueta="Horas planeadas"
+            valor={horas(totalHoras * 60)}
+            sufijo="h"
+          />
+          <Metrica
+            etiqueta="Extra planeada"
+            valor={horas(totalExtra * 60)}
+            sufijo="h"
+            tono={totalExtra > 0 ? 'alerta' : 'neutro'}
+          />
+          <Metrica
+            etiqueta="Colaboradores"
+            valor={String(colaboradores.length)}
+            oculta="hidden sm:block"
+          />
+          <Metrica
+            ancla="metrica-alertas"
+            etiqueta="Alertas abiertas"
+            valor={String(abiertas.length)}
+            tono={trabado ? 'error' : abiertas.length > 0 ? 'alerta' : 'ok'}
+          />
+        </div>
 
-        <div className="ml-auto flex items-end gap-2">
-          <Link
-            href={`/cronograma/${tienda.id}/${semana.fecha_inicio}/imprimir`}
-            className="rounded-md border bg-[var(--superficie)] px-3 py-2 text-sm text-[var(--texto)] transition hover:bg-[var(--superficie-alt)]"
-          >
-            PDF
-          </Link>
-
-          <button
-            onClick={() => accion(
-              () => revalidar(tienda.id, semana.fecha_inicio, semana.id),
-              'Reglas revisadas.',
-            )}
-            disabled={pendiente || cerrada}
-            className="rounded-md border bg-[var(--superficie)] px-3 py-2 text-sm text-[var(--texto)] transition hover:bg-[var(--superficie-alt)] disabled:opacity-50"
-          >
-            Revisar reglas
-          </button>
-
-          {semana.estado === 'borrador' && (
+        <div className="ml-auto flex w-full items-end gap-2 sm:w-auto">
+          {puedePublicar ? (
             <button
-              onClick={() => accion(
-                () => publicar(tienda.id, semana.fecha_inicio, semana.id),
-                'Semana publicada.',
-              )}
-              disabled={pendiente}
-              className="rounded-md bg-[var(--texto)] px-3 py-2 text-sm font-medium text-white transition hover:bg-black disabled:opacity-50"
+              data-guia="publicar"
+              onClick={() =>
+                accion(
+                  () => publicar(tienda.id, semana.fecha_inicio, semana.id),
+                  'Aforo publicado.',
+                )
+              }
+              disabled={pendiente || trabado || vacia}
+              // Sin `title`: reemplazaría el nombre accesible del botón por el
+              // motivo, y un lector de pantalla anunciaría "primero hay que
+              // resolver…" en vez de "publicar". El motivo va como texto visible
+              // debajo, donde lo leen todos.
+              className="flex-1 rounded-md bg-[var(--texto)] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
             >
-              Publicar semana
+              Publicar el aforo
             </button>
+          ) : (
+            <Link
+              href={`/cronograma/${tienda.id}/${semana.fecha_inicio}/imprimir`}
+              className="flex-1 rounded-md bg-[var(--texto)] px-4 py-2.5 text-center text-sm font-medium text-white transition hover:bg-black sm:flex-none"
+            >
+              Imprimir
+            </Link>
           )}
+
+          <MenuMas
+            abierto={menu}
+            onAbrir={() => setMenu((x) => !x)}
+            onCerrar={() => setMenu(false)}
+          >
+            {!cerrada && (
+              <BotonMenu
+                onClick={() =>
+                  accion(
+                    () =>
+                      copiarAforoAnterior({
+                        tiendaId: tienda.id,
+                        semana: semana.fecha_inicio,
+                        semanaId: semana.id,
+                      }),
+                    'Aforo copiado.',
+                  )
+                }
+              >
+                Copiar la semana del {fechaCorta(semanaAnterior)}
+              </BotonMenu>
+            )}
+
+            {!cerrada && (
+              <BotonMenu
+                onClick={() => {
+                  setMenu(false)
+                  setImportando(true)
+                }}
+                disabled={!lecturaDisponible}
+                nota={
+                  lecturaDisponible
+                    ? undefined
+                    : 'La lectura automática todavía no está configurada'
+                }
+              >
+                Leer un archivo
+              </BotonMenu>
+            )}
+
+            {puedePublicar && (
+              <EnlaceMenu
+                href={`/cronograma/${tienda.id}/${semana.fecha_inicio}/imprimir`}
+              >
+                Imprimir
+              </EnlaceMenu>
+            )}
+          </MenuMas>
         </div>
       </div>
+
+      {/* Por qué no se puede publicar todavía, dicho al lado del botón y no
+          debajo de veintisiete filas de tabla. */}
+      {puedePublicar && (trabado || vacia) && (
+        <p className="mt-2 text-xs text-[var(--texto-suave)]">
+          {vacia
+            ? 'Para publicar, primero cargá los turnos de la semana.'
+            : `Para publicar hay que resolver ${bloqueantes.length} alerta(s). Están más abajo: se corrigen o se justifican.`}
+        </p>
+      )}
 
       {aviso && (
         <p
@@ -240,66 +382,99 @@ export default function Grilla({
         </p>
       )}
 
-      {/* Grilla */}
-      <div className="mt-5 overflow-hidden rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
-        <div className="scroll-x">
-          <table className="w-full min-w-[1100px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b bg-[var(--superficie-alt)]">
-                <th className="sticky left-0 z-10 bg-[var(--superficie-alt)] px-4 py-2.5 text-left text-xs font-semibold text-[var(--texto-suave)]">
-                  Colaborador
-                </th>
-                {fechas.map((f, i) => (
-                  <th
-                    key={f}
-                    className="min-w-[136px] px-2 py-2.5 text-center text-xs font-semibold text-[var(--texto-suave)]"
-                  >
-                    {DIAS[i]}{' '}
-                    <span className="font-normal text-[var(--texto-tenue)]">
-                      {f.slice(8)}
-                    </span>
-                  </th>
-                ))}
-                <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--texto-suave)]">
-                  Horas
-                </th>
-              </tr>
-            </thead>
+      {/* Pantalla angosta: la lista por persona */}
+      <div data-guia="aforo-lista" className="mt-5 lg:hidden">
+        <AforoLista
+          tienda={tienda}
+          semana={semana}
+          cargos={cargos}
+          colaboradores={colaboradores}
+          turnos={turnos}
+          resumen={resumen}
+          frecuentes={frecuentes}
+          ausencias={ausencias}
+          validaciones={abiertas}
+        />
+      </div>
 
-            <tbody>
-              {cargosConGente.map((cargo) => (
-                <FragmentoCargo
-                  key={cargo.id}
-                  cargo={cargo}
-                  fechas={fechas}
-                  porCelda={porCelda}
-                  porColaborador={porColaborador}
-                  hallazgos={hallazgosPorColaborador}
-                  ausencias={ausenciaPorCelda}
-                  cerrada={cerrada}
-                  onEditar={(colaborador, fecha) => setCelda({ colaborador, fecha })}
-                />
-              ))}
-            </tbody>
-          </table>
+      {/* Pantalla ancha: la grilla de la semana */}
+      <div data-guia="aforo-grilla" className="mt-5 hidden lg:block">
+        <p className="mb-2 text-xs text-[var(--texto-suave)]">
+          {cerrada
+            ? 'Esta semana está cerrada: no admite cambios.'
+            : 'Tocá cualquier celda para armar, cambiar o quitar el turno de ese día.'}
+        </p>
+
+        <div className="overflow-hidden rounded-[var(--radio)] border bg-[var(--superficie)] shadow-[var(--sombra)]">
+          <div className="scroll-x">
+            <table className="w-full min-w-[1100px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b bg-[var(--superficie-alt)]">
+                  <th className="sticky left-0 z-10 bg-[var(--superficie-alt)] px-4 py-2.5 text-left text-xs font-semibold text-[var(--texto-suave)]">
+                    Colaborador
+                  </th>
+                  {fechas.map((f, i) => (
+                    <th
+                      key={f}
+                      className="min-w-[136px] px-2 py-2.5 text-center text-xs font-semibold text-[var(--texto-suave)]"
+                    >
+                      {DIAS[i]}{' '}
+                      <span className="font-normal text-[var(--texto-tenue)]">
+                        {f.slice(8)}
+                      </span>
+                    </th>
+                  ))}
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--texto-suave)]">
+                    Horas
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {cargosConGente.map((cargo) => (
+                  <FragmentoCargo
+                    key={cargo.id}
+                    cargo={cargo}
+                    fechas={fechas}
+                    porCelda={porCelda}
+                    porColaborador={porColaborador}
+                    alertas={alertasPorColaborador}
+                    ausencias={ausenciaPorCelda}
+                    cerrada={cerrada}
+                    onEditar={(colaborador, fecha) =>
+                      setCelda({ colaborador, fecha })
+                    }
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <p className="mt-2 text-xs text-[var(--texto-tenue)]">
-        {cerrada
-          ? 'La semana está cerrada: no admite cambios.'
-          : 'Tocá cualquier celda para armar, cambiar o quitar el turno.'}
+      {/* La pregunta aparece mirando la lista —"¿y Juliana?"—, así que la salida
+          tiene que estar acá y no en un menú de otra pantalla. */}
+      <p data-guia="enlace-personal" className="mt-2 text-xs text-[var(--texto-suave)]">
+        ¿Falta alguien, o alguien ya no trabaja acá?{' '}
+        <Link
+          href={`/personal/${tienda.id}`}
+          className="underline underline-offset-2 hover:text-[var(--texto)]"
+        >
+          Administrar las personas de {tienda.codigo}
+        </Link>
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">
-          <PanelHallazgos
+          <PanelAlertas
+            ancla="panel-alertas"
             validaciones={validaciones}
             colaboradores={colaboradores}
             tiendaId={tienda.id}
             semana={semana.fecha_inicio}
           />
           <PanelAusencias
+            ancla="panel-novedades"
             ausencias={ausencias}
             colaboradores={colaboradores}
             tiendaId={tienda.id}
@@ -308,6 +483,7 @@ export default function Grilla({
           />
         </div>
         <PanelAdjuntos
+          ancla="panel-adjuntos"
           adjuntos={adjuntos}
           tiendaId={tienda.id}
           semanaId={semana.id}
@@ -315,6 +491,16 @@ export default function Grilla({
           cerrada={cerrada}
         />
       </div>
+
+      {importando && (
+        <Importador
+          tiendaId={tienda.id}
+          semana={semana.fecha_inicio}
+          semanaId={semana.id}
+          colaboradores={colaboradores}
+          onCerrar={() => setImportando(false)}
+        />
+      )}
 
       {celda && (
         <EditorCelda
@@ -332,12 +518,103 @@ export default function Grilla({
   )
 }
 
+/** Lo secundario detrás de un solo botón, para que la acción principal se vea */
+function MenuMas({
+  abierto,
+  onAbrir,
+  onCerrar,
+  children,
+}: {
+  abierto: boolean
+  onAbrir: () => void
+  onCerrar: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="relative">
+      <button
+        data-guia="menu-mas"
+        onClick={onAbrir}
+        aria-expanded={abierto}
+        aria-haspopup="menu"
+        className="rounded-md border bg-[var(--superficie)] px-3 py-2.5 text-sm text-[var(--texto)] transition hover:bg-[var(--superficie-alt)]"
+      >
+        Más<span className="sr-only"> opciones</span>
+      </button>
+
+      {abierto && (
+        <>
+          {/* Cierra al tocar afuera, incluido el pulgar en el celular */}
+          <button
+            aria-label="Cerrar el menú"
+            onClick={onCerrar}
+            className="fixed inset-0 z-20 cursor-default"
+          />
+          <div
+            role="menu"
+            className="absolute right-0 z-30 mt-1 w-60 overflow-hidden rounded-[var(--radio)] border bg-[var(--superficie)] py-1 shadow-[var(--sombra)]"
+          >
+            {children}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function BotonMenu({
+  onClick,
+  disabled,
+  nota,
+  children,
+}: {
+  onClick: () => void
+  disabled?: boolean
+  /** Por qué no está disponible, en vez de un botón muerto sin explicación */
+  nota?: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      role="menuitem"
+      onClick={onClick}
+      disabled={disabled}
+      className="block w-full px-3 py-2.5 text-left text-sm transition hover:bg-[var(--superficie-alt)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+    >
+      {children}
+      {nota && (
+        <span className="mt-0.5 block text-[11px] text-[var(--texto-tenue)]">
+          {nota}
+        </span>
+      )}
+    </button>
+  )
+}
+
+function EnlaceMenu({
+  href,
+  children,
+}: {
+  href: string
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      role="menuitem"
+      href={href}
+      className="block w-full px-3 py-2.5 text-left text-sm transition hover:bg-[var(--superficie-alt)]"
+    >
+      {children}
+    </Link>
+  )
+}
+
 function FragmentoCargo({
   cargo,
   fechas,
   porCelda,
   porColaborador,
-  hallazgos,
+  alertas,
   ausencias,
   cerrada,
   onEditar,
@@ -346,7 +623,7 @@ function FragmentoCargo({
   fechas: string[]
   porCelda: Map<string, Turno[]>
   porColaborador: Map<string, FilaResumen>
-  hallazgos: Map<string, Validacion[]>
+  alertas: Map<string, Validacion[]>
   ausencias: Map<string, Ausencia>
   cerrada: boolean
   onEditar: (c: Colaborador, fecha: string) => void
@@ -372,26 +649,35 @@ function FragmentoCargo({
         const r = porColaborador.get(c.id)
         const hs = Number(r?.horas_planeadas ?? 0)
         const extra = Number(r?.horas_extra_planeadas ?? 0)
-        const misHallazgos = hallazgos.get(c.id) ?? []
-        const bloqueante = misHallazgos.some((h) => h.severidad === 'bloqueante')
+        const misAlertas = alertas.get(c.id) ?? []
+        const bloqueante = misAlertas.some((h) => h.severidad === 'bloqueante')
 
         return (
-          <tr key={c.id} className="border-b last:border-0 hover:bg-[var(--superficie-alt)]/40">
+          <tr
+            key={c.id}
+            className="border-b last:border-0 hover:bg-[var(--superficie-alt)]/40"
+          >
             <td className="sticky left-0 z-10 bg-[var(--superficie)] px-4 py-1.5">
               <div className="flex items-center gap-2">
+                {/* El nombre primero: "07351" no le dice nada a nadie */}
                 <span className="text-[13px] font-medium">
-                  {c.codigo_empleado ?? c.nombre_completo}
+                  {c.nombre_completo}
                 </span>
-                {misHallazgos.length > 0 && (
+                {c.codigo_empleado && (
+                  <span className="cifra text-[10px] text-[var(--texto-tenue)]">
+                    {c.codigo_empleado}
+                  </span>
+                )}
+                {misAlertas.length > 0 && (
                   <span
-                    title={misHallazgos.map((h) => h.mensaje).join('\n')}
+                    title={misAlertas.map((h) => h.mensaje).join('\n')}
                     className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                       bloqueante
                         ? 'bg-[var(--error-fondo)] text-[var(--error)]'
                         : 'bg-[var(--alerta-fondo)] text-[var(--alerta)]'
                     }`}
                   >
-                    {misHallazgos.length}
+                    {misAlertas.length}
                   </span>
                 )}
               </div>
@@ -480,15 +766,21 @@ function Celda({
       <button
         onClick={onClick}
         disabled={cerrada}
+        aria-label={
+          vacia && !cerrada ? 'Cargar el turno de este día' : undefined
+        }
         className={`w-full rounded-md px-1.5 py-1 text-center transition ${
           vacia
-            ? 'text-[var(--texto-tenue)] hover:bg-[var(--superficie-alt)]'
+            ? 'border border-dashed border-transparent text-[var(--texto-tenue)] hover:border-[var(--borde-fuerte)] hover:bg-[var(--superficie-alt)]'
             : 'text-white hover:brightness-105'
         } ${cerrada ? 'cursor-default' : 'cursor-pointer'}`}
-        style={vacia ? undefined : { background: color ?? 'var(--texto-suave)' }}
+        style={
+          vacia ? undefined : { background: color ?? 'var(--texto-suave)' }
+        }
       >
         {vacia ? (
-          <span className="text-xs">·</span>
+          // Un "+" tenue dice que la celda se puede tocar; un punto no dice nada
+          <span className="text-xs leading-tight">{cerrada ? '·' : '+'}</span>
         ) : (
           <span className="block leading-tight">
             {bloques.map((b) => (
@@ -504,7 +796,9 @@ function Celda({
               {horas(
                 bloques.reduce(
                   (s, b) =>
-                    s + (b.duracion_minutos ?? duracionMinutos(b.hora_inicio, b.hora_fin)),
+                    s +
+                    (b.duracion_minutos ??
+                      duracionMinutos(b.hora_inicio, b.hora_fin)),
                   0,
                 ),
               )}
@@ -522,11 +816,16 @@ function Metrica({
   valor,
   sufijo,
   tono = 'neutro',
+  oculta,
+  ancla,
 }: {
   etiqueta: string
   valor: string
   sufijo?: string
   tono?: 'neutro' | 'ok' | 'alerta' | 'error'
+  oculta?: string
+  /** Nombre del anclaje del recorrido guiado, si esta métrica tiene un paso */
+  ancla?: string
 }) {
   const color = {
     neutro: 'text-[var(--texto)]',
@@ -536,7 +835,10 @@ function Metrica({
   }[tono]
 
   return (
-    <div className="rounded-[var(--radio)] border bg-[var(--superficie)] px-4 py-2.5">
+    <div
+      data-guia={ancla}
+      className={`rounded-[var(--radio)] border bg-[var(--superficie)] px-3 py-2 sm:px-4 sm:py-2.5 ${oculta ?? ''}`}
+    >
       <div className="text-[11px] text-[var(--texto-suave)]">{etiqueta}</div>
       <div className={`cifra mt-0.5 text-lg font-semibold ${color}`}>
         {valor}
